@@ -124,7 +124,7 @@ impl Matrix {
         if matrix.points.len() != 3 && matrix.points[0].len() != 3 {
             return Err("Must be a 3x3 matrix");
         }
-        let is_even = row + column % 2 == 0;
+        let is_even = (row + column) % 2 == 0;
         let minor = Matrix::minor(matrix, row, column)?;
 
         if is_even {
@@ -139,7 +139,7 @@ impl Matrix {
             return Err("Must be a 4x4 matrix");
         }
 
-        let is_even = row + column % 2 == 0;
+        let is_even = (row + column) % 2 == 0;
         let minor = Matrix::minor(matrix, row, column)?;
 
         if is_even {
