@@ -10,7 +10,7 @@ mod prelude {
     pub use crate::canvas::*;
     pub use crate::color::*;
     pub use crate::points::*;
-    pub const EPSILON: f32 = 0.001;
+    pub const EPSILON: f32 = 0.01;
 }
 
 use prelude::*;
@@ -42,7 +42,8 @@ fn draw_projectile() {
     }
     write_canvas_to_file(&canvas);
 }
-
+/// # Returns
+/// Returns true if a == b within crate::EPSILON
 pub fn compare_float(a: f32, b: f32) -> bool {
     let mut result = 0.0;
     if a < b {

@@ -114,14 +114,7 @@ impl Matrix {
     fn minor(matrix: &Matrix, row: i32, column: i32) -> Result<f32, &str> {
         if matrix.points.len() >= 3 && matrix.points[0].len() >= 3 {
             let submatrix = Matrix::submatrix(matrix, row, column)?;
-
-            // Cannot ? here because of moved data?
-            // Its fine we'll just handle it here. Could even unwrap perhaps because only way
-            // get_determinant fails is if matrix is too large, but we would have already exited in that case
-            match submatrix.get_determinant() {
-                Ok(det) => Ok(det),
-                Err(e) => Err("Something unexpected happened"),
-            }
+            Ok(submatrix.get_determinant())
         } else {
             Err("Matrix must be larger than 3x3 ")
         }
@@ -155,6 +148,25 @@ impl Matrix {
             Ok(-minor)
         }
     }
+    
+    fn inverse(matrix: &Matrix) -> Result<Matrix,&str>{
+        let length = matrix.points.len();
+        if !matrix.is_invertible() { return Err("Cannot invert this matrix")};
+        if length != 4 { return Err("Only 4x4 Matrices for now") }
+        let mut new_matrix = Matrix::new(matrix.points.len() as i32,matrix.points[0].len() as i32);
+        
+        for row in 0.. length{
+            for column in 0..new_matrix.points[0].len(){
+                let cofactor = 
+                    Matrix::cofactor_4x4(&matrix, row as i32,column as i32).expect("Err logically unreachable");
+                // Col / Row flipped for transposition.
+                new_matrix.points[column][row] = cofactor / Matrix::get_determinant(matrix);
+            }
+        } 
+        
+        Ok(new_matrix)
+        
+    }
     pub fn set_to(&mut self, matrix: &Matrix) {
         for x in 0..self.points.len() {
             for y in 0..self.points[0].len() {
@@ -168,25 +180,27 @@ impl Matrix {
     pub fn transposed(&self) -> Self {
         Self::transposed_matrix(self)
     }
-    pub fn get_determinant(&self) -> Result<f32, &str> {
+    pub fn get_determinant(&self) -> f32 {
         // This is horrendous. probably worth refactoring cofactor to read what size the matrix is/ making all functions matrix size agnostic
         if self.points.len() == 2 && self.points[0].len() == 2 {
-            Ok((self.points[0][0] * self.points[1][1]) - (self.points[0][1] * self.points[1][0]))
+            self.points[0][0] * self.points[1][1] - (self.points[0][1] * self.points[1][0])
         } else {
             if self.points.len() == 3 && self.points[0].len() == 3 {
                 let mut determinant = 0.0;
                 for x in 0..self.points[0].len() {
-                    determinant += self.points[0][x] * Self::cofactor_3x3(&self, 0, x as i32)?
+                    let cofactor = Self::cofactor_3x3(&self, 0, x as i32).expect("Err is logically unreachable");
+                    determinant += self.points[0][x] * cofactor;
                 }
-                Ok(determinant)
-            } else if self.points.len() == 4 {
-                let mut determinant = 0.0;
-                for x in 0..self.points[0].len() {
-                    determinant += self.points[0][x] * Self::cofactor_4x4(&self, 0, x as i32)?
-                }
-                Ok(determinant)
+                determinant
             } else {
-                Err("That isn't a matrix that's just a number!")
+                {
+                    let mut determinant = 0.0;
+                    for x in 0..self.points[0].len() {
+                        let cofactor = Self::cofactor_4x4(&self, 0, x as i32).expect("Err is logically unreachable");
+                        determinant += self.points[0][x] * cofactor;
+                    }
+                    determinant
+                }
             }
         }
     }
@@ -261,10 +275,16 @@ impl Matrix {
         }
         true
     }
+    
+    pub fn is_invertible(&self) -> bool {
+        let determinant = self.get_determinant();
+        !crate::compare_float(determinant,0.0)
+    }
 }
 
 #[cfg(test)]
 mod tests_matrix {
+    use log::debug;
     use crate::matrix::Matrix;
     use crate::points::{Point, Vector};
 
@@ -409,7 +429,7 @@ mod tests_matrix {
         matrix.points[0] = vec![1.0, 5.0];
         matrix.points[1] = vec![-3.0, 2.0];
 
-        assert_eq!(matrix.get_determinant().expect("Test data is valid"), 17.0)
+        assert_eq!(matrix.get_determinant(), 17.0)
     }
     #[test]
     fn test_submatrix_3x3_to_2x2() {
@@ -461,7 +481,7 @@ mod tests_matrix {
         let correct_determinant = 25.0;
         assert_eq!(
             correct_determinant,
-            b_matrix.get_determinant().expect("Test data is valid")
+            b_matrix.get_determinant()
         );
         assert_eq!(
             correct_determinant,
@@ -507,7 +527,7 @@ mod tests_matrix {
             Matrix::cofactor_3x3(&matrix_1, 0, 2).expect("Test Data"),
             -46.0
         );
-        assert_eq!(matrix_1.get_determinant().expect("Test data"), -196.0);
+        assert_eq!(matrix_1.get_determinant(), -196.0);
     }
     #[test]
     fn test_determinant_4x4() {
@@ -534,6 +554,55 @@ mod tests_matrix {
             Matrix::cofactor_4x4(&matrix, 0, 3).expect("Test Data"),
             51.0
         );
-        assert_eq!(matrix.get_determinant().expect("Test Data"), -4071.0);
+        assert_eq!(matrix.get_determinant(), -4071.0);
+    }
+    
+    #[test]
+    fn test_identify_invertible(){
+        let matrix = Matrix::new_4x4_from_rows(
+            vec![6.0,4.0,4.0,4.0],
+            vec![5.0,5.0,7.0,6.0],
+            vec![4.0,-9.0,3.0,-7.0],
+            vec![9.0,1.0,7.0,-6.0]
+        );
+        
+        assert_eq!(matrix.get_determinant(), -2120.0);
+        assert!(matrix.is_invertible());
+        
+        
+        let non_invertible_matrix = Matrix::new_4x4_from_rows(
+            vec![-4.0,2.0,-2.0,-3.0],
+            vec![9.0,6.0,2.0,6.0],
+            vec![0.0,-5.0,1.0,-5.0],
+            vec![0.0,0.0,0.0,0.0]
+        );
+        assert!(!non_invertible_matrix.is_invertible())
+    }
+    
+    #[test]
+    fn test_inverting(){
+        let matrix = Matrix::new_4x4_from_rows(
+            vec![-5.0,2.0,6.0,-8.0],
+            vec![1.0,-5.0,1.0,8.0],
+            vec![7.0,7.0,-6.0,-7.0],
+            vec![1.0,-3.0,7.0,4.0]
+        );
+        
+        let inverted = Matrix::inverse(&matrix).expect("matrix 1 is invertible");
+        
+        assert_eq!(Matrix::get_determinant(&matrix), 532.0);
+        assert_eq!(Matrix::cofactor_4x4(&matrix,2,3).expect("Valid input"),-160.0);
+        assert_eq!(Matrix::cofactor_4x4(&matrix,3,2).expect("Valid input"),105.0);
+        
+        
+        
+        let correct_inverted = Matrix::new_4x4_from_rows(
+            vec![0.21806,0.45113,0.24060,-0.04511],
+            vec![-0.80827,-1.45677,-0.44361,0.52068],
+            vec![-0.07895,-0.22368,-0.05263,0.19737],
+            vec![-0.52256,-0.81391,-0.30075,0.30639]
+        );
+        println!("inv: {:?} correct: {:?}",inverted,correct_inverted);
+        assert!(inverted.equals(&correct_inverted))
     }
 }
