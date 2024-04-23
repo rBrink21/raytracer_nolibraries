@@ -605,4 +605,62 @@ mod tests_matrix {
         println!("inv: {:?} correct: {:?}",inverted,correct_inverted);
         assert!(inverted.equals(&correct_inverted))
     }
+    
+    #[test]
+    fn test_inverting_extra(){
+        // just really thoroughly testing the inverting because debugging it later will be a nightmare
+        let matrix = Matrix::new_4x4_from_rows(
+            vec![8.0,-5.0,9.0,2.0],
+            vec![7.0,5.0,6.0,1.0],
+            vec![-6.0,0.0,9.0,6.0],
+            vec![-3.0,0.0,-9.0,-4.0],
+        );
+        
+        let matrix_inverse = Matrix::new_4x4_from_rows(
+            vec![-0.15385,-0.15385,-0.28205,-0.53846],
+            vec![-0.07692,0.12308,0.02564,0.03077],
+            vec![0.35897,0.35897,0.43590,0.92308],
+            vec![-0.69231,-0.69231,-0.76923,-1.92308]
+        );
+        
+        assert!(Matrix::inverse(&matrix).expect("Test data").equals(&matrix_inverse));
+        
+        let matrix = Matrix::new_4x4_from_rows(
+            vec![9.0,3.0,0.0,9.0],
+            vec![-5.0,-2.0,-6.0,-3.0],
+            vec![-4.0,9.0,6.0,4.0],
+            vec![-7.0,6.0,6.0,2.0]
+        );
+        
+        let matrix_inverse = Matrix::new_4x4_from_rows(
+            vec![-0.04074,-0.07778,0.14444,-0.22222],
+            vec![-0.07778,0.03333,0.36667,-0.33333],
+            vec![-0.02901,-0.14630,-0.10926,0.12963],
+            vec![0.17778,0.06667,-0.26667,0.33333]
+        );
+        
+        assert!(Matrix::inverse(&matrix).expect("Test data is valid").equals(&matrix_inverse))
+    }
+    
+    
+    #[test]
+    fn test_multiply_by_inverse(){
+        let matrix = Matrix::new_4x4_from_rows(
+            vec![3.0,-9.0,7.0,3.0],
+            vec![3.0,-8.0,2.0,-9.0],
+            vec![-4.0,4.0,4.0,1.0],
+            vec![-6.0,5.0,-1.0,1.0]
+        );
+        
+        let matrix_b = Matrix::new_4x4_from_rows(
+            vec![8.0,2.0,2.0,2.0],
+            vec![3.0,-1.0,7.0,0.0],
+            vec![7.0,0.0,5.0,4.0],
+            vec![6.0,-2.0,0.0,5.0]
+        );
+        // Test that if you multiply A and B you can get A back by multiplying the result by the inverse of B
+        let matrix_c = matrix.multiply_by_matrix(&matrix_b);
+        let inverted_b = Matrix::inverse(&matrix_b).expect("b is invertible");
+        assert!(matrix_c.multiply_by_matrix(&inverted_b).equals(&matrix))
+    }
 }
