@@ -94,10 +94,23 @@ impl Matrix {
                 }
             }
         }
-        
-        
         Ok(new_matrix)
     }
+    
+    fn minor_3x3(matrix: &Matrix, row:i32, column:i32) -> Result<f32,&str>{
+        if matrix.points.len() == 3 && matrix.points[0].len() == 3{
+            let matrix = Matrix::submatrix(matrix,row,column)?;
+            Ok(matrix.get_determinant()) 
+        }
+        else { 
+            Err("Matrix must be 3x3")
+        }
+        
+        
+        
+        
+    }
+    
     pub fn set_to(&mut self, matrix: &Matrix){
         for x in 0..self.points.len(){
             for y in 0..self.points[0].len(){
@@ -326,7 +339,7 @@ mod tests_matrix {
         assert_eq!(matrix.get_determinant(),17.0)
     }
     #[test]
-    fn test_submatrix_getter_3x3_to_2x2(){
+    fn test_submatrix_3x3_to_2x2(){
         
         let matrix = Matrix::new_3x3_from_rows(
             vec![1.0,5.0,0.0],
@@ -360,5 +373,21 @@ mod tests_matrix {
         
         let computed_submatrix = Matrix::submatrix(&matrix,2,1);
         assert!(computed_submatrix.expect("Test data, should not panic").equals(&correct_submatrix));
+    }
+    #[test]
+    fn test_minor_3x3(){
+        let matrix = Matrix::new_3x3_from_rows(
+            vec![3.0,5.0,0.0],
+            vec![2.0,-1.0,-7.0],
+            vec![6.0,-1.0,5.0]
+        );
+        
+        
+        let b_matrix = Matrix::submatrix(&matrix,1,0);
+        let b_matrix = b_matrix.expect("Test data, should not panic");
+        
+        let correct_determinant = 25.0;
+        assert_eq!(correct_determinant, b_matrix.get_determinant());
+        assert_eq!(correct_determinant, Matrix::minor_3x3(&matrix,1,0).expect("Test data is valid"))
     }
 }
